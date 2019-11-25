@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    tools:context=".MainActivity"
+    android:orientation="vertical">
+
+    <TextView
+        android:id="@+id/tvBandBluetooth"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_margin="@dimen/dp_5"
+        android:text="已绑定蓝牙设备："
+        android:textSize="18sp" />
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+android:text="干垃圾"
+        android:onClick="drytrush"/>
+    <Button
+
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+
+       android:onClick="yuyin"
+        android:background="#03A9F4"
+        android:text="语音控制"
+        android:textColor="#ffffff"
+        android:textSize="@dimen/sp_16" />
+    <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:id="@+id/yuyin"
+        android:text="yuyin"/>
+</LinearLayout>
