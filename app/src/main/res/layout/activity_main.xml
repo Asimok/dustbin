@@ -20,6 +20,11 @@
 android:text="干垃圾"
         android:onClick="drytrush"/>
     <Button
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="关"
+        android:onClick="drytrushclode"/>
+    <Button
 
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
@@ -34,4 +39,8 @@ android:text="干垃圾"
         android:layout_height="wrap_content"
         android:id="@+id/yuyin"
         android:text="yuyin"/>
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+android:id="@+id/tvrecive"/>
 </LinearLayout>

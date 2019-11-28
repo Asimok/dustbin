@@ -1,11 +1,11 @@
 package com.example.dustbin;
 
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.content.ContextCompat;
 import speech.setting.IatSettings;
 import speech.util.JsonParser;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
@@ -17,6 +17,8 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 
+import android.os.Handler;
+import android.os.Message;
 import android.speech.tts.TextToSpeech;
 import android.text.TextUtils;
 import android.util.Log;
@@ -41,6 +43,7 @@ import com.iflytek.cloud.ui.RecognizerDialogListener;
 import com.iflytek.cloud.util.ResourceUtil;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.OutputStream;
 import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
@@ -48,9 +51,15 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.UUID;
 
 public class MainActivity extends AppCompatActivity {
-    private TextView tv_content,tvBandBluetooth;
+    private final UUID MY_UUID = UUID
+            .fromString("00001101-0000-1000-8000-00805F9B34FB");
+    private OutputStream os;
+    private ConnectedThread thread;
+    boolean commected = true;
+    private TextView tv_recive,tvBandBluetooth;
     private bluetooth_Pref blue_sp;
     // 获取到蓝牙适配器
     public BluetoothAdapter mBluetoothAdapter;
@@ -63,9 +72,9 @@ public class MainActivity extends AppCompatActivity {
     private RecognizerDialog mIatDialog;
     // 用HashMap存储听写结果
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
-
+    BluetoothDevice lvDevice=null;
     private Toast mToast;
-
+    BluetoothSocket lvSocket = null;
     private SharedPreferences mSharedPreferences;
     private boolean mTranslateEnable = false;
     private String mEngineType = "cloud";
@@ -76,6 +85,7 @@ public class MainActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         yuyin=(Button) findViewById(R.id.yuyin);
+        tv_recive=findViewById(R.id.tvrecive);
         tvBandBluetooth= (TextView) findViewById(R.id.tvBandBluetooth);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         blue_sp=bluetooth_Pref.getInstance(this);
@@ -142,6 +152,7 @@ public class MainActivity extends AppCompatActivity {
 
 
         });
+
     }
 
 
@@ -155,33 +166,55 @@ public class MainActivity extends AppCompatActivity {
      * 向指定的蓝牙设备发送数据
      */
     public void send(String pvsMac, byte[] pvsContent) throws IOException {
-        BluetoothDevice lvDevice = mBluetoothAdapter.getRemoteDevice(pvsMac);
-        BluetoothSocket lvSocket = null;
-        try {
-            lvSocket = (BluetoothSocket) lvDevice.getClass().getMethod("createRfcommSocket", new Class[]{int.class}).invoke(lvDevice, 1);
-        } catch (NoSuchMethodException e) {
-            e.printStackTrace();
-        } catch (IllegalAccessException e) {
-            e.printStackTrace();
-        } catch (InvocationTargetException e) {
-            e.printStackTrace();
+
+        // 如果选择设备为空则代表还没有选择设备
+        if (lvDevice == null) {
+            //通过地址获取到该设备
+            lvDevice = mBluetoothAdapter.getRemoteDevice(pvsMac);
         }
-        OutputStream lvOs = null;
+        // 这里需要try catch一下，以防异常抛出
         try {
-            try {
+            // 判断客户端接口是否为空
+            if (lvSocket == null) {
+                // 获取到客户端接口
+                lvSocket = lvDevice
+                        .createRfcommSocketToServiceRecord(MY_UUID);
+                // 向服务端发送连接
                 lvSocket.connect();
-            } catch (Exception e) {
-                lvSocket.close();
-                throw e;
+
+                // 获取到输出流，向外写数据
+                os = lvSocket.getOutputStream();
+                if (commected) {
+                    commected = false;
+                    // 实例接收客户端传过来的数据线程
+                    thread = new ConnectedThread(lvSocket);
+                    // 线程开始
+                    thread.start();
+                }
             }
-            lvOs = lvSocket.getOutputStream();
-            lvOs.write(pvsContent);
-            Toast.makeText(this,"发送成功",Toast.LENGTH_SHORT).show();
-        } finally {
-            if (lvOs != null) lvOs.close();
-            //lvSocket.close(); outputstream close时已经关闭socket了,所以无需再close
+            // 判断是否拿到输出流
+            if (os != null) {
+                // 需要发送的信息
+                // 以utf-8的格式发送出去
+                os.write(pvsContent);
+            }
+            // 吐司一下，告诉用户发送成功
+            Toast.makeText(this, "发送信息成功，请查收", Toast.LENGTH_SHORT).show();
+        } catch (IOException e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+            // 如果发生异常则告诉用户发送失败
+            Toast.makeText(this, "发送信息失败", Toast.LENGTH_SHORT).show();
         }
     }
+
+
+
+
+
+
+
+
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()){
@@ -507,4 +540,108 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
+
+    public void drytrushclode(View view) throws IOException {
+        send(blue_sp.getBluetoothAd(),Codes.closeDryTrush);
+    }
+
+    // 创建handler，因为我们接收是采用线程来接收的，在线程中无法操作UI，所以需要handler
+    @SuppressLint("HandlerLeak")
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            // TODO Auto-generated method stub
+            super.handleMessage(msg);
+            // 通过msg传递过来的信息，吐司一下收到的信息
+            // Toast.makeText(BuletoothClientActivity.this, (String) msg.obj, Toast.LENGTH_SHORT).show();
+            tv_recive.setText((String) msg.obj);
+        }
+    };
+
+    private class ConnectedThread extends Thread {
+        private final BluetoothSocket mmSocket;
+        private final InputStream mmInStream;
+        private final OutputStream mmOutStream;
+
+        public ConnectedThread(BluetoothSocket socket) {
+            Log.d("aa", "create ConnectedThread");
+            mmSocket = socket;
+            InputStream tmpIn = null;
+            OutputStream tmpOut = null;
+
+            // Get the BluetoothSocket input and output streams
+            try {
+                tmpIn = socket.getInputStream();
+                tmpOut = socket.getOutputStream();
+            } catch (IOException e) {
+                Log.d("aa", "temp sockets not created" + e);
+            }
+
+            mmInStream = tmpIn;
+            mmOutStream = tmpOut;
+        }
+
+        public void run() {
+            if (Thread.interrupted()) {
+                Log.d("aa", "return");
+                return;
+            }
+            Log.d("aa", "BEGIN mConnectedThread");
+            byte[] buffer = new byte[128];
+            int bytes;
+
+            // Keep listening to the InputStream while connected
+            while (true) {
+                synchronized (this) {
+
+                    try {
+                        while (mmInStream.available() == 0) {
+                        }
+                        try {
+                            Thread.sleep(100);  //当有数据流入时，线程休眠一段时间，默认100ms
+                        } catch (InterruptedException e) {
+                            e.printStackTrace();
+                        }
+                        bytes = mmInStream.read(buffer);  //从字节流中读取数据填充到字节数组，返回读取数据的长度
+
+                        Log.d("aa", "count   " + bytes);
+                        // 创建Message类，向handler发送数据
+                        Message msg = new Message();
+                        // 发送一个String的数据，让他向上转型为obj类型
+                        msg.obj = new String(buffer, 0, bytes, "utf-8");
+                        // 发送数据
+                        Log.d("aa", "data   " + msg.obj);
+                        handler.sendMessage(msg);
+                    } catch (IOException e) {
+                        Log.e("aa", "disconnected", e);
+
+                        break;
+                    }
+                }
+
+
+            }
+        }
+
+        /**
+         * Write to the connected OutStream.
+         *
+         * @param buffer The bytes to write
+         */
+        public void write(byte[] buffer) {
+            try {
+                mmOutStream.write(buffer);
+            } catch (IOException e) {
+                Log.e("aa", "Exception during write", e);
+            }
+        }
+
+        public void cancel() {
+            try {
+                mmSocket.close();
+            } catch (IOException e) {
+                Log.e("aa", "close() of connect socket failed", e);
+            }
+        }
+    }
 }
