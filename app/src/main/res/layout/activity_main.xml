@@ -14,33 +14,92 @@
         android:layout_margin="@dimen/dp_5"
         android:text="已绑定蓝牙设备："
         android:textSize="18sp" />
-    <Button
-        android:layout_width="wrap_content"
+    <LinearLayout
+        android:layout_width="match_parent"
         android:layout_height="wrap_content"
-android:text="干垃圾"
-        android:onClick="drytrush"/>
+        android:orientation="horizontal"
+        android:weightSum="4">
     <Button
-        android:layout_width="wrap_content"
+        android:layout_marginLeft="2dp"
+android:id="@+id/drytrush"
+        android:layout_width="0dp"
+        android:layout_weight="1"
         android:layout_height="wrap_content"
-        android:text="关"
-        android:onClick="drytrushclode"/>
-    <Button
+        android:text="干垃圾"
 
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
+        android:textSize="18sp"
+        android:textColor="#ffffff"
+        android:background="#4CAF50"
+         />
+        <Button
+            android:layout_marginLeft="2dp"
+            android:layout_marginRight="2dp"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:background="#4CAF50"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="湿垃圾"
+            android:id="@+id/wettrush"
+           />
+        <Button
 
+            android:layout_marginRight="2dp"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:background="#4CAF50"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="可回收垃圾"
+
+            android:id="@+id/recycletrush"/>
+        <Button
+
+            android:layout_marginRight="2dp"
+            android:textSize="18sp"
+            android:textColor="#ffffff"
+            android:background="#4CAF50"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="wrap_content"
+            android:text="有害垃圾"
+            android:id="@+id/hazaroustrush"
+           />
+</LinearLayout>
+
+   <LinearLayout
+
+       android:gravity="center"
+       android:layout_width="match_parent"
+       android:layout_height="wrap_content"
+       android:layout_margin="20dp">
+    <Button
+        android:layout_width="100dp"
+        android:layout_height="100dp"
+android:id="@+id/yuyin"
        android:onClick="yuyin"
         android:background="#03A9F4"
         android:text="语音控制"
         android:textColor="#ffffff"
         android:textSize="@dimen/sp_16" />
-    <Button
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:id="@+id/yuyin"
-        android:text="yuyin"/>
-    <TextView
+</LinearLayout>
+    <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-android:id="@+id/tvrecive"/>
+        android:orientation="horizontal">
+        <TextView
+            android:textSize="20sp"
+            android:text="当前状态:   "
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            />
+    <TextView
+        android:textSize="20sp"
+        android:gravity="center"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/tvrecive"/>
+</LinearLayout>
 </LinearLayout>

@@ -1,9 +1,5 @@
 package com.example.dustbin;
 
-import androidx.appcompat.app.AppCompatActivity;
-import speech.setting.IatSettings;
-import speech.util.JsonParser;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
@@ -13,10 +9,10 @@ import android.bluetooth.BluetoothSocket;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
-
 import android.os.Handler;
 import android.os.Message;
 import android.speech.tts.TextToSpeech;
@@ -45,7 +41,6 @@ import com.iflytek.cloud.util.ResourceUtil;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
-import java.lang.reflect.InvocationTargetException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
@@ -53,17 +48,21 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-public class MainActivity extends AppCompatActivity {
+import androidx.appcompat.app.AppCompatActivity;
+import speech.setting.IatSettings;
+import speech.util.JsonParser;
+
+public class MainActivity extends AppCompatActivity implements View.OnClickListener {
     private final UUID MY_UUID = UUID
             .fromString("00001101-0000-1000-8000-00805F9B34FB");
     private OutputStream os;
     private ConnectedThread thread;
     boolean commected = true;
-    private TextView tv_recive,tvBandBluetooth;
+    private TextView tv_recive, tvBandBluetooth;
     private bluetooth_Pref blue_sp;
     // 获取到蓝牙适配器
     public BluetoothAdapter mBluetoothAdapter;
-    public Button yuyin = null;
+    public Button yuyin = null, drytrush, wettrush, recycletrush, hazaroustrush;
     private TextToSpeech texttospeech;
     private static String TAG = "IatDemo";
     // 语音听写对象
@@ -72,26 +71,34 @@ public class MainActivity extends AppCompatActivity {
     private RecognizerDialog mIatDialog;
     // 用HashMap存储听写结果
     private HashMap<String, String> mIatResults = new LinkedHashMap<String, String>();
-    BluetoothDevice lvDevice=null;
+    BluetoothDevice lvDevice = null;
     private Toast mToast;
     BluetoothSocket lvSocket = null;
     private SharedPreferences mSharedPreferences;
     private boolean mTranslateEnable = false;
     private String mEngineType = "cloud";
-
+    private boolean bldrytrush = true, blwettrush = true, blrecycletrush = true, blhazaroustrush = true;
     int ret = 0;// 函数调用返回值
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        yuyin=(Button) findViewById(R.id.yuyin);
-        tv_recive=findViewById(R.id.tvrecive);
-        tvBandBluetooth= (TextView) findViewById(R.id.tvBandBluetooth);
+        yuyin = (Button) findViewById(R.id.yuyin);
+        tv_recive = findViewById(R.id.tvrecive);
+        tvBandBluetooth = (TextView) findViewById(R.id.tvBandBluetooth);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
-        blue_sp=bluetooth_Pref.getInstance(this);
+        blue_sp = bluetooth_Pref.getInstance(this);
         tvBandBluetooth.setText(String.format("已绑定设备：  %s  %s", blue_sp.getBluetoothName(), blue_sp.getBluetoothAd()));
 
-
+        drytrush = (Button) findViewById(R.id.drytrush);
+        wettrush = (Button) findViewById(R.id.wettrush);
+        recycletrush = (Button) findViewById(R.id.recycletrush);
+        hazaroustrush = (Button) findViewById(R.id.hazaroustrush);
+        drytrush.setOnClickListener(this);
+        wettrush.setOnClickListener(this);
+                recycletrush.setOnClickListener(this);
+        hazaroustrush.setOnClickListener(this);
         // 初始化识别无UI识别对象
         // 使用SpeechRecognizer对象，可根据回调消息自定义界面；
 
@@ -99,7 +106,7 @@ public class MainActivity extends AppCompatActivity {
 
         // 初始化听写Dialog，如果只使用有UI听写功能，无需创建SpeechRecognizer
         // 使用UI听写功能，请根据sdk文件目录下的notice.txt,放置布局文件和图片资源
-        mIatDialog = new RecognizerDialog(MainActivity.this,mInitListener);
+        mIatDialog = new RecognizerDialog(MainActivity.this, mInitListener);
 
         mSharedPreferences = getSharedPreferences(IatSettings.PREFER_NAME, Activity.MODE_PRIVATE);
         mToast = Toast.makeText(this, "", Toast.LENGTH_SHORT);
@@ -126,29 +133,29 @@ public class MainActivity extends AppCompatActivity {
             public void onClick(View view) {
 
 
-                        //TODO  语音控制
+                //TODO  语音控制
 
-                        mIatResults.clear();
-                        // 设置参数
-                        setParam();
-                        boolean isShowDialog = mSharedPreferences.getBoolean(getString(R.string.pref_key_iat_show), true);
-                        if (isShowDialog) {
-                            // 显示听写对话框
-                            mIatDialog.setListener(mRecognizerDialogListener);
-                            mIatDialog.show();
-                            showTip(getString(R.string.text_begin));
-                        } else {
-                            // 不显示听写对话框
-                            ret = mIat.startListening(mRecognizerListener);
-                            if (ret != ErrorCode.SUCCESS) {
-                                showTip("听写失败,错误码：" + ret);
-                            } else {
-                                showTip(getString(R.string.text_begin));
-                            }
-                        }
-
-
+                mIatResults.clear();
+                // 设置参数
+                setParam();
+                boolean isShowDialog = mSharedPreferences.getBoolean(getString(R.string.pref_key_iat_show), true);
+                if (isShowDialog) {
+                    // 显示听写对话框
+                    mIatDialog.setListener(mRecognizerDialogListener);
+                    mIatDialog.show();
+                    showTip(getString(R.string.text_begin));
+                } else {
+                    // 不显示听写对话框
+                    ret = mIat.startListening(mRecognizerListener);
+                    if (ret != ErrorCode.SUCCESS) {
+                        showTip("听写失败,错误码：" + ret);
+                    } else {
+                        showTip(getString(R.string.text_begin));
                     }
+                }
+
+
+            }
 
 
         });
@@ -159,9 +166,10 @@ public class MainActivity extends AppCompatActivity {
     //右上角三个点
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_main,menu);
+        getMenuInflater().inflate(R.menu.menu_main, menu);
         return true;
     }
+
     /***
      * 向指定的蓝牙设备发送数据
      */
@@ -209,15 +217,9 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
-
-
-
-
-
-
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()){
+        switch (item.getItemId()) {
             case R.id.menu_1:
                 Toast.makeText(this, "连接蓝牙", Toast.LENGTH_SHORT).show();
 
@@ -237,6 +239,7 @@ public class MainActivity extends AppCompatActivity {
         }
         return true;
     }
+
     private boolean isNeedRequestPermissions(List<String> permissions) {
         // 定位精确位置
         addPermission(permissions, Manifest.permission.ACCESS_FINE_LOCATION);
@@ -263,46 +266,39 @@ public class MainActivity extends AppCompatActivity {
             requestPermissions(permissions.toArray(new String[permissions.size()]), 0);
         }
     }
+
     @Override
     protected void onResume() {
         tvBandBluetooth.setText(String.format("已绑定设备：  %s  %s", blue_sp.getBluetoothName(), blue_sp.getBluetoothAd()));
         super.onResume();
     }
 
-    public void drytrush(View view) {
-        try {
-            send(blue_sp.getBluetoothAd(), Codes.openDryTrush);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
 
     public void yuyin(View view) {
-        if (blue_sp.getBluetoothAd()==null) {
+        if (blue_sp.getBluetoothAd() == null) {
             Toast.makeText(getApplicationContext(), "未连接到蓝牙设备！请重新连接！", Toast.LENGTH_SHORT).show();
         } else {
 
-                //TODO  语音控制
+            //TODO  语音控制
 
-                mIatResults.clear();
-                // 设置参数
-                setParam();
-                boolean isShowDialog = mSharedPreferences.getBoolean(getString(R.string.pref_key_iat_show), true);
-                if (isShowDialog) {
-                    // 显示听写对话框
-                    mIatDialog.setListener(mRecognizerDialogListener);
-                    mIatDialog.show();
-                    showTip(getString(R.string.text_begin));
+            mIatResults.clear();
+            // 设置参数
+            setParam();
+            boolean isShowDialog = mSharedPreferences.getBoolean(getString(R.string.pref_key_iat_show), true);
+            if (isShowDialog) {
+                // 显示听写对话框
+                mIatDialog.setListener(mRecognizerDialogListener);
+                mIatDialog.show();
+                showTip(getString(R.string.text_begin));
+            } else {
+                // 不显示听写对话框
+                ret = mIat.startListening(mRecognizerListener);
+                if (ret != ErrorCode.SUCCESS) {
+                    showTip("听写失败,错误码：" + ret);
                 } else {
-                    // 不显示听写对话框
-                    ret = mIat.startListening(mRecognizerListener);
-                    if (ret != ErrorCode.SUCCESS) {
-                        showTip("听写失败,错误码：" + ret);
-                    } else {
-                        showTip(getString(R.string.text_begin));
-                    }
+                    showTip(getString(R.string.text_begin));
                 }
-
+            }
 
 
         }
@@ -339,8 +335,8 @@ public class MainActivity extends AppCompatActivity {
         public void onError(SpeechError error) {
             // Tips：
             // 错误码：10118(您没有说话)，可能是录音机权限被禁，需要提示用户打开应用的录音权限。
-            if(mTranslateEnable && error.getErrorCode() == 14002) {
-                showTip( error.getPlainDescription(true)+"\n请确认是否已开通翻译功能" );
+            if (mTranslateEnable && error.getErrorCode() == 14002) {
+                showTip(error.getPlainDescription(true) + "\n请确认是否已开通翻译功能");
             } else {
                 showTip(error.getPlainDescription(true));
             }
@@ -354,15 +350,15 @@ public class MainActivity extends AppCompatActivity {
 
         @Override
         public void onResult(RecognizerResult results, boolean isLast) {
-            if( mTranslateEnable ){
-                printTransResult( results );
-            }else{
+            if (mTranslateEnable) {
+                printTransResult(results);
+            } else {
                 String text = JsonParser.parseIatResult(results.getResultString());
 
 
             }
 
-            if(isLast) {
+            if (isLast) {
                 //TODO 最后的结果
             }
         }
@@ -370,7 +366,7 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onVolumeChanged(int volume, byte[] data) {
             showTip("当前正在说话，音量大小：" + volume);
-            Log.d(TAG, "返回音频数据："+data.length);
+            Log.d(TAG, "返回音频数据：" + data.length);
         }
 
         @Override
@@ -387,6 +383,7 @@ public class MainActivity extends AppCompatActivity {
     /**
      * 听写UI监听器
      */
+    //TODO 判断听写内容
     private final RecognizerDialogListener mRecognizerDialogListener = new RecognizerDialogListener() {
         public void onResult(RecognizerResult results, boolean isLast) {
             Log.d(TAG, "recognizer result：" + results.getResultString());
@@ -397,29 +394,105 @@ public class MainActivity extends AppCompatActivity {
                 String text = JsonParser.parseIatResult(results.getResultString());
                 //TODO
                 // 朗读
-                if (text.contains("干") && text.contains("垃")) {
-                    texttospeech.speak("打开干垃圾箱", TextToSpeech.QUEUE_ADD,
-                            null);
-                    try {
-                        send(blue_sp.getBluetoothAd(), Codes.openDryTrush);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
+//                drytrush
+//                wettrush
+//                recycletrush
+//                        hazaroustrush
+                int i = 0;
+                for (i = 0; i < Codes.DryGarbage.length; i++) {
+                    if (text.contains(Codes.DryGarbage[i])) {
+                        texttospeech.speak(Codes.DryGarbage[i] + "是干垃圾", TextToSpeech.QUEUE_ADD,
+                                null);
 
-                } else if (text.contains("完") && text.contains("了")) {
-                    texttospeech.speak("关闭垃圾箱", TextToSpeech.QUEUE_ADD,
-                            null);
-                    try {
-                        send(blue_sp.getBluetoothAd(), Codes.closeDryTrush);
-                    } catch (IOException e) {
-                        e.printStackTrace();
+                        Log.d("aa", Codes.DryGarbage[i] + "    " + text);
+                        drytrush.performClick();
                     }
+                }
+                for (i = 0; i < Codes.WetGarbage.length; i++) {
+                    if (text.contains(Codes.WetGarbage[i])) {
+                        texttospeech.speak(Codes.WetGarbage[i] + "是湿垃圾", TextToSpeech.QUEUE_ADD,
+                                null);
+                        Log.d("aa", Codes.WetGarbage[i] + "    " + text);
+                        wettrush.performClick();
+                    }
+                }
+                for (i = 0; i < Codes.RecyGarbage.length; i++) {
+                    if (text.contains(Codes.RecyGarbage[i])) {
+                        texttospeech.speak(Codes.RecyGarbage[i] + "是可回收垃圾", TextToSpeech.QUEUE_ADD,
+                                null);
+                        Log.d("aa", Codes.RecyGarbage[i] + "    " + text);
+                        recycletrush.performClick();
+                    }
+                }
+                for (i = 0; i < Codes.UnRecyGarbage.length; i++) {
+                    if (text.contains(Codes.UnRecyGarbage[i])) {
+                        texttospeech.speak(Codes.UnRecyGarbage[i] + "是不可回收垃圾", TextToSpeech.QUEUE_ADD,
+                                null);
+                        Log.d("aa", Codes.UnRecyGarbage[i] + "    " + text);
+                        hazaroustrush.performClick();
 
+                    }
                 }
 
 
+                if (text.contains("关闭") && text.contains("干垃圾")) {
+                    texttospeech.speak("关闭干垃圾箱", TextToSpeech.QUEUE_ADD,
+                            null);
+                    drytrush.performClick();
+
+                }
+
+                if (text.contains("关闭") && text.contains("湿垃圾")) {
+                    texttospeech.speak("关闭湿垃圾箱", TextToSpeech.QUEUE_ADD,
+                            null);
+                    wettrush.performClick();
+
+                }
+
+                if (text.contains("关闭") && text.contains("可回收垃圾")) {
+                    texttospeech.speak("关闭可回收垃圾箱", TextToSpeech.QUEUE_ADD,
+                            null);
+                    recycletrush.performClick();
+
+                }
+
+                if (text.contains("关闭") && text.contains("不可回收垃圾")) {
+                    texttospeech.speak("关闭不可回收垃圾箱", TextToSpeech.QUEUE_ADD,
+                            null);
+                    hazaroustrush.performClick();
+
+
+                }
+
+                if (text.contains("关闭") && text.contains("所有垃圾箱")) {
+                    texttospeech.speak("关闭所有垃圾箱", TextToSpeech.QUEUE_ADD,
+                            null);
+                    drytrush.performClick();
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    wettrush.performClick();
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    recycletrush.performClick();
+                    try {
+                        Thread.sleep(1000);
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                    hazaroustrush.performClick();
+
+
+                }
+
             }
         }
+
 
         /**
          * 识别回调错误.
@@ -435,8 +508,7 @@ public class MainActivity extends AppCompatActivity {
     };
 
 
-    private void showTip(final String str)
-    {
+    private void showTip(final String str) {
         runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -448,9 +520,10 @@ public class MainActivity extends AppCompatActivity {
 
     /**
      * 参数设置
+     *
      * @return
      */
-    public void setParam(){
+    public void setParam() {
         // 清空参数
         mIat.setParameter(SpeechConstant.PARAMS, null);
         String lag = mSharedPreferences.getString("iat_language_preference", "mandarin");
@@ -459,16 +532,16 @@ public class MainActivity extends AppCompatActivity {
         // 设置返回结果格式
         mIat.setParameter(SpeechConstant.RESULT_TYPE, "json");
 
-        this.mTranslateEnable = mSharedPreferences.getBoolean( this.getString(R.string.pref_key_translate), false );
+        this.mTranslateEnable = mSharedPreferences.getBoolean(this.getString(R.string.pref_key_translate), false);
         if (mEngineType.equals(SpeechConstant.TYPE_LOCAL)) {
             // 设置本地识别资源
             mIat.setParameter(ResourceUtil.ASR_RES_PATH, getResourcePath());
         }
-        if( mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable ){
-            Log.i( TAG, "translate enable" );
-            mIat.setParameter( SpeechConstant.ASR_SCH, "1" );
-            mIat.setParameter( SpeechConstant.ADD_CAP, "translate" );
-            mIat.setParameter( SpeechConstant.TRS_SRC, "its" );
+        if (mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable) {
+            Log.i(TAG, "translate enable");
+            mIat.setParameter(SpeechConstant.ASR_SCH, "1");
+            mIat.setParameter(SpeechConstant.ADD_CAP, "translate");
+            mIat.setParameter(SpeechConstant.TRS_SRC, "its");
         }
         //设置语言，目前离线听写仅支持中文
         if (lag.equals("en_us")) {
@@ -477,19 +550,19 @@ public class MainActivity extends AppCompatActivity {
             mIat.setParameter(SpeechConstant.ACCENT, null);
 
 
-            if( mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable ){
-                mIat.setParameter( SpeechConstant.ORI_LANG, "en" );
-                mIat.setParameter( SpeechConstant.TRANS_LANG, "cn" );
+            if (mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable) {
+                mIat.setParameter(SpeechConstant.ORI_LANG, "en");
+                mIat.setParameter(SpeechConstant.TRANS_LANG, "cn");
             }
-        }else {
+        } else {
             // 设置语言
             mIat.setParameter(SpeechConstant.LANGUAGE, "zh_cn");
             // 设置语言区域
-            mIat.setParameter(SpeechConstant.ACCENT,lag);
+            mIat.setParameter(SpeechConstant.ACCENT, lag);
 
-            if( mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable ){
-                mIat.setParameter( SpeechConstant.ORI_LANG, "cn" );
-                mIat.setParameter( SpeechConstant.TRANS_LANG, "en" );
+            if (mEngineType.equals(SpeechConstant.TYPE_CLOUD) && mTranslateEnable) {
+                mIat.setParameter(SpeechConstant.ORI_LANG, "cn");
+                mIat.setParameter(SpeechConstant.TRANS_LANG, "en");
             }
         }
 
@@ -503,12 +576,12 @@ public class MainActivity extends AppCompatActivity {
         mIat.setParameter(SpeechConstant.ASR_PTT, mSharedPreferences.getString("iat_punc_preference", "1"));
 
         // 设置音频保存路径，保存音频格式支持pcm、wav，设置路径为sd卡请注意WRITE_EXTERNAL_STORAGE权限
-        mIat.setParameter(SpeechConstant.AUDIO_FORMAT,"wav");
-        mIat.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory()+"/msc/iat.wav");
+        mIat.setParameter(SpeechConstant.AUDIO_FORMAT, "wav");
+        mIat.setParameter(SpeechConstant.ASR_AUDIO_PATH, Environment.getExternalStorageDirectory() + "/msc/iat.wav");
     }
 
 
-    private String getResourcePath(){
+    private String getResourcePath() {
         StringBuffer tempBuffer = new StringBuffer();
         //识别通用资源
         tempBuffer.append(ResourceUtil.generateResourcePath(this, ResourceUtil.RESOURCE_TYPE.assets, "asr/common.jet"));
@@ -518,32 +591,30 @@ public class MainActivity extends AppCompatActivity {
         return tempBuffer.toString();
     }
 
-    private void printTransResult (RecognizerResult results) {
-        String trans  = JsonParser.parseTransResult(results.getResultString(),"dst");
-        String oris = JsonParser.parseTransResult(results.getResultString(),"src");
+    private void printTransResult(RecognizerResult results) {
+        String trans = JsonParser.parseTransResult(results.getResultString(), "dst");
+        String oris = JsonParser.parseTransResult(results.getResultString(), "src");
 
-        if( TextUtils.isEmpty(trans)|| TextUtils.isEmpty(oris) ){
-            showTip( "解析结果失败，请确认是否已开通翻译功能。" );
-        }else{
+        if (TextUtils.isEmpty(trans) || TextUtils.isEmpty(oris)) {
+            showTip("解析结果失败，请确认是否已开通翻译功能。");
+        } else {
 
         }
 
     }
+
     @Override
     protected void onDestroy() {
         super.onDestroy();
 
-        if( null != mIat ){
+        if (null != mIat) {
             // 退出时释放连接
             mIat.cancel();
             mIat.destroy();
         }
+        thread.cancel();
     }
 
-
-    public void drytrushclode(View view) throws IOException {
-        send(blue_sp.getBluetoothAd(),Codes.closeDryTrush);
-    }
 
     // 创建handler，因为我们接收是采用线程来接收的，在线程中无法操作UI，所以需要handler
     @SuppressLint("HandlerLeak")
@@ -557,6 +628,95 @@ public class MainActivity extends AppCompatActivity {
             tv_recive.setText((String) msg.obj);
         }
     };
+
+    //按钮
+//    public void drytrush(View view) {
+//
+//    }
+//
+//    public void wettrush(View view) {
+//
+//    }
+//
+//    public void recycletrush(View view) {
+//
+//    }
+//
+//    public void hazaroustrush(View view) {
+//
+//    }
+
+    @Override
+    public void onClick(View view) {
+        //TODO 按钮点击
+        switch (view.getId()) {
+            case R.id.drytrush:
+                try {
+                    if (bldrytrush) {
+                        send(blue_sp.getBluetoothAd(), Codes.openDryTrush);
+                        drytrush.setBackgroundColor(Color.GRAY);
+                        bldrytrush = false;
+                    } else {
+                        send(blue_sp.getBluetoothAd(), Codes.closeDryTrush);
+                        drytrush.setBackgroundColor(Color.parseColor("#4CAF50"));
+                        bldrytrush = true;
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.wettrush:
+                try {
+                    if (blwettrush) {
+                        send(blue_sp.getBluetoothAd(), Codes.openwettrush);
+                        wettrush.setBackgroundColor(Color.GRAY);
+                        blwettrush = false;
+                    } else {
+                        send(blue_sp.getBluetoothAd(), Codes.closewettrush);
+                        wettrush.setBackgroundColor(Color.parseColor("#4CAF50"));
+                        blwettrush = true;
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.recycletrush:
+                try {
+                    if (blrecycletrush) {
+                        send(blue_sp.getBluetoothAd(), Codes.openrecycletrush);
+                        recycletrush.setBackgroundColor(Color.GRAY);
+                        blrecycletrush = false;
+                    } else {
+                        send(blue_sp.getBluetoothAd(), Codes.closerecycletrush);
+                        recycletrush.setBackgroundColor(Color.parseColor("#4CAF50"));
+                        blrecycletrush = true;
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+            case R.id.hazaroustrush:
+                try {
+                    if (blhazaroustrush) {
+                        send(blue_sp.getBluetoothAd(), Codes.openhazaroustrush);
+                        hazaroustrush.setBackgroundColor(Color.GRAY);
+                        blhazaroustrush = false;
+                    } else {
+                        send(blue_sp.getBluetoothAd(), Codes.closehazaroustrush);
+                        hazaroustrush.setBackgroundColor(Color.parseColor("#4CAF50"));
+                        blhazaroustrush = true;
+                    }
+
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                break;
+        }
+
+    }
 
     private class ConnectedThread extends Thread {
         private final BluetoothSocket mmSocket;
